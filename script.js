@@ -1,67 +1,74 @@
-const taskInput = document.getElementById("taskInput");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const taskList = document.getElementById("taskList");
+const balance = document.getElementById("balance");
+const income = document.getElementById("income");
+const expense = document.getElementById("expense");
+const transactionList = document.getElementById("transactionList");
+const transactionForm = document.getElementById("transactionForm");
+const text = document.getElementById("text");
+const amount = document.getElementById("amount");
 
-// Load tasks from localStorage
-document.addEventListener("DOMContentLoaded", loadTasks);
+let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 
-addTaskBtn.addEventListener("click", addTask);
+// Update values
+function updateValues() {
+  const amounts = transactions.map(t => t.amount);
 
-// Add task
-function addTask() {
-  const taskText = taskInput.value.trim();
-  if (taskText === "") return;
+  const total = amounts.reduce((acc, item) => acc + item, 0).toFixed(2);
+  const incomeVal = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0).toFixed(2);
+  const expenseVal = (amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0) * -1).toFixed(2);
 
-  const li = createTaskElement(taskText);
-  taskList.appendChild(li);
-
-  saveTask(taskText);
-  taskInput.value = "";
+  balance.textContent = `$${total}`;
+  income.textContent = `$${incomeVal}`;
+  expense.textContent = `$${expenseVal}`;
 }
 
-// Create task element
-function createTaskElement(text) {
+// Add transaction to DOM
+function addTransactionDOM(transaction) {
+  const sign = transaction.amount < 0 ? "-" : "+";
   const li = document.createElement("li");
-  li.textContent = text;
+  li.classList.add(transaction.amount < 0 ? "negative" : "positive");
 
-  // Mark complete on click
-  li.addEventListener("click", () => {
-    li.classList.toggle("completed");
-  });
-
-  // Delete button
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "Delete";
-  deleteBtn.classList.add("deleteBtn");
-  deleteBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    li.remove();
-    removeTask(text);
-  });
-
-  li.appendChild(deleteBtn);
-  return li;
+  li.innerHTML = `
+    ${transaction.text} <span>${sign}$${Math.abs(transaction.amount).toFixed(2)}</span>
+    <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
+  `;
+  transactionList.appendChild(li);
 }
 
-// Save task to localStorage
-function saveTask(task) {
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-  tasks.push(task);
-  localStorage.setItem("tasks", JSON.stringify(tasks));
+// Add transaction
+function addTransaction(e) {
+  e.preventDefault();
+
+  if (text.value.trim() === "" || amount.value.trim() === "") return;
+
+  const transaction = {
+    id: Date.now(),
+    text: text.value,
+    amount: +amount.value
+  };
+
+  transactions.push(transaction);
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+
+  addTransactionDOM(transaction);
+  updateValues();
+
+  text.value = "";
+  amount.value = "";
 }
 
-// Remove task from localStorage
-function removeTask(task) {
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-  tasks = tasks.filter(t => t !== task);
-  localStorage.setItem("tasks", JSON.stringify(tasks));
+// Remove transaction
+function removeTransaction(id) {
+  transactions = transactions.filter(t => t.id !== id);
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+  init();
 }
 
-// Load tasks from localStorage
-function loadTasks() {
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-  tasks.forEach(task => {
-    const li = createTaskElement(task);
-    taskList.appendChild(li);
-  });
+// Init
+function init() {
+  transactionList.innerHTML = "";
+  transactions.forEach(addTransactionDOM);
+  updateValues();
 }
+
+init();
+transactionForm.addEventListener("submit", addTransaction);
